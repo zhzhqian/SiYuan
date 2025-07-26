@@ -16,13 +16,17 @@
 
 if {$::env(BOARD) eq "genesys2"} {
     add_files -fileset constrs_1 -norecurse ../xilinx_constraint/genesys2.xdc
+    read_ip ../xilinx_ip/xlnx_mig_7_ddr3/ip/xlnx_mig_7_ddr3.xci
 } elseif {$::env(BOARD) eq "vc707"} {
     add_files -fileset constrs_1 -norecurse ../xilinx_constraint/vc707.xdc
+    read_ip ../xilinx_ip/xlnx_mig_7_ddr3/ip/xlnx_mig_7_ddr3.xci
+} elseif {$::env(BOARD) eq "zcu106"} {
+    add_files -fileset constrs_1 -norecurse ../xilinx_constraint/zcu106.xdc
+    read_ip ../xilinx_ip/xlnx_mig_ddr4_sdram/ip/xlnx_mig_ddr4_sdram.xci
 } else {
     exit 1
 }
 
-read_ip ../xilinx_ip/xlnx_mig_7_ddr3/ip/xlnx_mig_7_ddr3.xci
 read_ip ../xilinx_ip/xlnx_axi_clock_converter/ip/xlnx_axi_clock_converter.xci
 read_ip ../xilinx_ip/xlnx_axi_dwidth_converter/ip/xlnx_axi_dwidth_converter.xci
 read_ip ../xilinx_ip/xlnx_axi_gpio/ip/xlnx_axi_gpio.xci
@@ -61,6 +65,11 @@ if {$::env(BOARD) eq "vc707"} {
     read_verilog -sv {../../de/inc/genesys2.svh ../../de/inc/registers.svh ../../de/inc/glb_def.svh ../../de/inc/sy_cache.svh  
     ../../de/inc/sy_mmu.svh ../../de/inc/sy_ovall.svh ../../de/inc/sy_ppl.svh}
     set file "genesys2.svh"
+    set registers "registers.svh"
+} elseif {$::env(BOARD) eq "zcu106"} {
+    read_verilog -sv {../../de/inc/zcu106.svh ../../de/inc/registers.svh ../../de/inc/glb_def.svh ../../de/inc/sy_cache.svh
+    ../../de/inc/sy_mmu.svh ../../de/inc/sy_ovall.svh ../../de/inc/sy_ppl.svh}
+    set file "zcu106.svh"
     set registers "registers.svh"
 } else {
     exit 1

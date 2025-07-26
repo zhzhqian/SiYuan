@@ -18,7 +18,7 @@
 
 void write_serial(char a);
 
-void init_uart();
+void init_uart(uint32_t freq, uint32_t boardrate);
 
 void print_uart(const char* str);
 

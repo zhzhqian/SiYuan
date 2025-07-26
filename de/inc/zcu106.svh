@@ -1,0 +1,2 @@
+`define ZCU106
+`define PLATFORM_XILINX

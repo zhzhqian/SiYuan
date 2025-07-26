@@ -4,7 +4,7 @@
 # root path
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 root-dir := $(dir $(mkfile_path))
-BOARD ?= vc707
+BOARD ?= zcu106
 DV_HOME = $(root-dir)/dv
 DE_HOME = $(root-dir)/de
 SIM_DIR = ./dv/simulation
@@ -25,7 +25,11 @@ ifeq ($(BOARD), genesys2)
 	CLK_PERIOD_NS            := 20
 else ifeq ($(BOARD), vc707)
 	XILINX_PART              := xc7vx485tffg1761-2
-	XILINX_BOARD             := xilinx.com:vc707:part0:1.3
+	XILINX_BOARD             := xilinx.com:vc707:part0:1.4
+	CLK_PERIOD_NS            := 20
+else ifeq ($(BOARD), zcu106)
+	XILINX_PART              := xczu7ev-ffvc1156-2-e
+	XILINX_BOARD             := xilinx.com:zcu106:part0:2.6
 	CLK_PERIOD_NS            := 20
 else
 $(error Unknown board - please specify a supported FPGA board)
@@ -106,6 +110,8 @@ ifeq ($(BOARD), genesys2)
 	fpga_src += de/src/sy_soc_genesys2.sv
 else ifeq ($(BOARD), vc707)
 	fpga_src += de/src/sy_soc_vc707.sv
+else ifeq ($(BOARD), zcu106)
+	fpga_src += de/src/sy_soc_zcu106.sv
 else
 $(error Unknown board - please specify a supported FPGA board)
 endif

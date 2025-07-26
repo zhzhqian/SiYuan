@@ -36,10 +36,10 @@ module sy_ddr
 `ifdef PLATFORM_XILINX
   output logic                            ddr_clock_out,
   output logic                            fan_pwm,   
-  input  logic                            sys_clk_p   ,
-  input  logic                            sys_clk_n   ,
   input  logic                            cpu_resetn  ,
   `ifdef VC707
+    input  logic                            sys_clk_p   ,
+    input  logic                            sys_clk_n   ,
     inout  wire  [63:0]                     ddr3_dq     ,
     inout  wire  [ 7:0]                     ddr3_dqs_n  ,
     inout  wire  [ 7:0]                     ddr3_dqs_p  ,
@@ -55,8 +55,29 @@ module sy_ddr
     output logic [ 0:0]                     ddr3_cs_n   ,
     output logic [ 7:0]                     ddr3_dm     ,
     output logic [ 0:0]                     ddr3_odt    ,
-    output logic                            ddr_sync_reset,       
+    output logic                            ddr_sync_reset,
+  `elsif ZCU106
+    input  logic                            c0_sys_clk_p,
+    input  logic                            c0_sys_clk_n,
+    output logic                            c0_ddr4_act_n,
+    output logic [16:0]                       c0_ddr4_adr,
+    output logic [1:0]                         c0_ddr4_ba,
+    output logic [0:0]                         c0_ddr4_bg,
+    output logic [0:0]                        c0_ddr4_cke,
+    output logic [0:0]                        c0_ddr4_odt,
+    output logic [0:0]                       c0_ddr4_cs_n,
+    output logic [0:0]                       c0_ddr4_ck_t,
+    output logic [0:0]                       c0_ddr4_ck_c,
+    output logic                          c0_ddr4_reset_n,
+    inout  logic [7:0]                   c0_ddr4_dm_dbi_n,
+    inout  logic [63:0]                        c0_ddr4_dq,
+    inout  logic [7:0]                      c0_ddr4_dqs_c,
+    inout  logic [7:0]                      c0_ddr4_dqs_t,
+    output logic                            ddr_sync_reset,
+    output                                  c0_ddr4_ui_clk,
   `elsif GENESYS2
+    input  logic                            sys_clk_p   ,
+    input  logic                            sys_clk_n   ,
     inout  wire  [31:0]                     ddr3_dq     ,
     inout  wire  [ 3:0]                     ddr3_dqs_n  ,
     inout  wire  [ 3:0]                     ddr3_dqs_p  ,
@@ -305,7 +326,193 @@ module sy_ddr
         .pwm_setting_i ( '1         ),
         .fan_pwm_o     ( fan_pwm    )
     );
-    
+`ifdef ZCU106
+    /* we can not modify data/addr width of ddr4, so add a axi converter */
+    localparam AxiDataWidthFromDDR = 512;
+    localparam AxiAddrWidthFromDDR = 32;
+    logic [AxiIdWidthSlaves-1:0]          s_ddr_axi_awid;
+    logic [AxiAddrWidthFromDDR-1:0]       s_ddr_axi_awaddr;
+    logic [7:0]                           s_ddr_axi_awlen;
+    logic [2:0]                           s_ddr_axi_awsize;
+    logic [1:0]                           s_ddr_axi_awburst;
+    logic [0:0]                           s_ddr_axi_awlock;
+    logic [3:0]                           s_ddr_axi_awcache;
+    logic [2:0]                           s_ddr_axi_awprot;
+    logic [3:0]                           s_ddr_axi_awregion;
+    logic [3:0]                           s_ddr_axi_awqos;
+    logic                                 s_ddr_axi_awvalid;
+    logic                                 s_ddr_axi_awready;
+    logic [AxiDataWidthFromDDR-1:0]       s_ddr_axi_wdata;
+    logic [AxiDataWidthFromDDR/8-1:0]     s_ddr_axi_wstrb;
+    logic                                 s_ddr_axi_wlast;
+    logic                                 s_ddr_axi_wvalid;
+    logic                                 s_ddr_axi_wready;
+    logic [AxiIdWidthSlaves-1:0]          s_ddr_axi_bid;
+    logic [1:0]                           s_ddr_axi_bresp;
+    logic                                 s_ddr_axi_bvalid;
+    logic                                 s_ddr_axi_bready;
+    logic [AxiIdWidthSlaves-1:0]          s_ddr_axi_arid;
+    logic [AxiAddrWidthFromDDR-1:0]       s_ddr_axi_araddr;
+    logic [7:0]                           s_ddr_axi_arlen;
+    logic [2:0]                           s_ddr_axi_arsize;
+    logic [1:0]                           s_ddr_axi_arburst;
+    logic [0:0]                           s_ddr_axi_arlock;
+    logic [3:0]                           s_ddr_axi_arcache;
+    logic [2:0]                           s_ddr_axi_arprot;
+    logic [3:0]                           s_ddr_axi_arregion;
+    logic [3:0]                           s_ddr_axi_arqos;
+    logic                                 s_ddr_axi_arvalid;
+    logic                                 s_ddr_axi_arready;
+    logic [AxiIdWidthSlaves-1:0]          s_ddr_axi_rid;
+    logic [AxiDataWidthFromDDR-1:0]       s_ddr_axi_rdata;
+    logic [1:0]                           s_ddr_axi_rresp;
+    logic                                 s_ddr_axi_rlast;
+    logic                                 s_ddr_axi_rvalid;
+    logic                                 s_ddr_axi_rready;
+
+    xlnx_axi_ddr_dwidth_converter ddr_converter(
+      // from ddr    
+      .s_axi_aclk    (clk_i),
+      .s_axi_aresetn    (rst_i),
+      .s_axi_awid    (s_axi_awid),
+      .s_axi_awaddr    (s_axi_awaddr),
+      .s_axi_awlen    (s_axi_awlen),
+      .s_axi_awsize    (s_axi_awsize),
+      .s_axi_awburst    (s_axi_awburst),
+      .s_axi_awlock    (s_axi_awlock),
+      .s_axi_awcache    (s_axi_awcache),
+      .s_axi_awprot    (s_axi_awprot),
+      .s_axi_awregion    (s_axi_awregion),
+      .s_axi_awqos    (s_axi_awqos),
+      .s_axi_awvalid    (s_axi_awvalid),
+      .s_axi_awready    (s_axi_awready),
+      .s_axi_wdata    (s_axi_wdata),
+      .s_axi_wstrb    (s_axi_wstrb),
+      .s_axi_wlast    (s_axi_wlast),
+      .s_axi_wvalid    (s_axi_wvalid),
+      .s_axi_wready    (s_axi_wready),
+      .s_axi_bid    (s_axi_bid),
+      .s_axi_bresp    (s_axi_bresp),
+      .s_axi_bvalid    (s_axi_bvalid),
+      .s_axi_bready    (s_axi_bready),
+      .s_axi_arid    (s_axi_arid),
+      .s_axi_araddr    (s_axi_araddr),
+      .s_axi_arlen    (s_axi_arlen),
+      .s_axi_arsize    (s_axi_arsize),
+      .s_axi_arburst    (s_axi_arburst),
+      .s_axi_arlock    (s_axi_arlock),
+      .s_axi_arcache    (s_axi_arcache),
+      .s_axi_arprot    (s_axi_arprot),
+      .s_axi_arregion    (s_axi_arregion),
+      .s_axi_arqos    (s_axi_arqos),
+      .s_axi_arvalid    (s_axi_arvalid),
+      .s_axi_arready    (s_axi_arready),
+      .s_axi_rid    (s_axi_rid),
+      .s_axi_rdata    (s_axi_rdata),
+      .s_axi_rresp    (s_axi_rresp),
+      .s_axi_rlast    (s_axi_rlast),
+      .s_axi_rvalid    (s_axi_rvalid),
+      .s_axi_rready    (s_axi_rready),
+
+      .m_axi_awaddr    (s_ddr_axi_awaddr),
+      .m_axi_awlen    (s_ddr_axi_awlen),
+      .m_axi_awsize    (s_ddr_axi_awsize),
+      .m_axi_awburst    (s_ddr_axi_awburst),
+      .m_axi_awlock    (s_ddr_axi_awlock),
+      .m_axi_awcache    (s_ddr_axi_awcache),
+      .m_axi_awprot    (s_ddr_axi_awprot),
+      .m_axi_awregion    (s_ddr_axi_awregion),
+      .m_axi_awqos    (s_ddr_axi_awqos),
+      .m_axi_awvalid    (s_ddr_axi_awvalid),
+      .m_axi_awready    (s_ddr_axi_awready),
+      .m_axi_wdata    (s_ddr_axi_wdata),
+      .m_axi_wstrb    (s_ddr_axi_wstrb),
+      .m_axi_wlast    (s_ddr_axi_wlast),
+      .m_axi_wvalid    (s_ddr_axi_wvalid),
+      .m_axi_wready    (s_ddr_axi_wready),
+      .m_axi_bresp    (s_ddr_axi_bresp),
+      .m_axi_bvalid    (s_ddr_axi_bvalid),
+      .m_axi_bready    (s_ddr_axi_bready),
+      .m_axi_araddr    (s_ddr_axi_araddr),
+      .m_axi_arlen    (s_ddr_axi_arlen),
+      .m_axi_arsize    (s_ddr_axi_arsize),
+      .m_axi_arburst    (s_ddr_axi_arburst),
+      .m_axi_arlock    (s_ddr_axi_arlock),
+      .m_axi_arcache    (s_ddr_axi_arcache),
+      .m_axi_arprot    (s_ddr_axi_arprot),
+      .m_axi_arregion    (s_ddr_axi_arregion),
+      .m_axi_arqos    (s_ddr_axi_arqos),
+      .m_axi_arvalid    (s_ddr_axi_arvalid),
+      .m_axi_arready    (s_ddr_axi_arready),
+      .m_axi_rdata    (s_ddr_axi_rdata),
+      .m_axi_rresp    (s_ddr_axi_rresp),
+      .m_axi_rlast    (s_ddr_axi_rlast),
+      .m_axi_rvalid    (s_ddr_axi_rvalid),
+      .m_axi_rready    (s_ddr_axi_rready)
+      );
+
+    xlnx_mig_ddr4_sdram i_ddr (
+        .c0_sys_clk_p                 ( c0_sys_clk_p           ),
+        .c0_sys_clk_n                 ( c0_sys_clk_n           ),
+        .c0_ddr4_act_n                ( c0_ddr4_act_n          ),
+        .c0_ddr4_adr                  ( c0_ddr4_adr            ),
+        .c0_ddr4_ba                   ( c0_ddr4_ba             ),
+        .c0_ddr4_bg                   ( c0_ddr4_bg             ),
+        .c0_ddr4_cke                  ( c0_ddr4_cke            ),
+        .c0_ddr4_odt                  ( c0_ddr4_odt            ),
+        .c0_ddr4_cs_n                 ( c0_ddr4_cs_n           ),
+        .c0_ddr4_ck_t                 ( c0_ddr4_ck_t           ),
+        .c0_ddr4_ck_c                 ( c0_ddr4_ck_c           ),
+        .c0_ddr4_reset_n              ( c0_ddr4_reset_n        ),
+        .c0_ddr4_dm_dbi_n             ( c0_ddr4_dm_dbi_n       ),
+        .c0_ddr4_dq                   ( c0_ddr4_dq             ),
+        .c0_ddr4_dqs_c                ( c0_ddr4_dqs_c          ),
+        .c0_ddr4_dqs_t                ( c0_ddr4_dqs_t          ),
+        .c0_ddr4_ui_clk               ( ddr_clock_out         ),
+        .c0_ddr4_ui_clk_sync_rst      ( ddr_sync_reset       ),
+        .c0_ddr4_aresetn              ( rst_i               ),
+        .c0_ddr4_s_axi_awid           ( s_axi_awid         ),
+        .c0_ddr4_s_axi_awaddr         ( s_ddr_axi_awaddr[31:0]),
+        .c0_ddr4_s_axi_awlen          ( s_ddr_axi_awlen        ),
+        .c0_ddr4_s_axi_awsize         ( s_ddr_axi_awsize       ),
+        .c0_ddr4_s_axi_awburst        ( s_ddr_axi_awburst      ),
+        .c0_ddr4_s_axi_awlock         ( s_ddr_axi_awlock       ),
+        .c0_ddr4_s_axi_awcache        ( s_ddr_axi_awcache      ),
+        .c0_ddr4_s_axi_awprot         ( s_ddr_axi_awprot       ),
+        .c0_ddr4_s_axi_awqos          ( s_ddr_axi_awqos        ),
+        .c0_ddr4_s_axi_awvalid        ( s_ddr_axi_awvalid      ),
+        .c0_ddr4_s_axi_awready        ( s_ddr_axi_awready      ),
+        .c0_ddr4_s_axi_wdata          ( s_ddr_axi_wdata        ),
+        .c0_ddr4_s_axi_wstrb          ( s_ddr_axi_wstrb        ),
+        .c0_ddr4_s_axi_wlast          ( s_ddr_axi_wlast        ),
+        .c0_ddr4_s_axi_wvalid         ( s_ddr_axi_wvalid       ),
+        .c0_ddr4_s_axi_wready         ( s_ddr_axi_wready       ),
+        .c0_ddr4_s_axi_bready         ( s_ddr_axi_bready       ),
+        .c0_ddr4_s_axi_bid            ( s_ddr_axi_bid          ),
+        .c0_ddr4_s_axi_bresp          ( s_ddr_axi_bresp        ),
+        .c0_ddr4_s_axi_bvalid         ( s_ddr_axi_bvalid       ),
+        .c0_ddr4_s_axi_arid           ( s_ddr_axi_arid         ),
+        .c0_ddr4_s_axi_araddr         ( s_ddr_axi_araddr[31:0]),
+        .c0_ddr4_s_axi_arlen          ( s_ddr_axi_arlen        ),
+        .c0_ddr4_s_axi_arsize         ( s_ddr_axi_arsize       ),
+        .c0_ddr4_s_axi_arburst        ( s_ddr_axi_arburst      ),
+        .c0_ddr4_s_axi_arlock         ( s_ddr_axi_arlock       ),
+        .c0_ddr4_s_axi_arcache        ( s_ddr_axi_arcache      ),
+        .c0_ddr4_s_axi_arprot         ( s_ddr_axi_arprot       ),
+        .c0_ddr4_s_axi_arqos          ( s_ddr_axi_arqos        ),
+        .c0_ddr4_s_axi_arvalid        ( s_ddr_axi_arvalid      ),
+        .c0_ddr4_s_axi_arready        ( s_ddr_axi_arready      ),
+        .c0_ddr4_s_axi_rready         ( s_ddr_axi_rready       ),
+        .c0_ddr4_s_axi_rid            ( s_ddr_axi_rid          ),
+        .c0_ddr4_s_axi_rdata          ( s_ddr_axi_rdata        ),
+        .c0_ddr4_s_axi_rresp          ( s_ddr_axi_rresp        ),
+        .c0_ddr4_s_axi_rlast          ( s_ddr_axi_rlast        ),
+        .c0_ddr4_s_axi_rvalid         ( s_ddr_axi_rvalid       ),
+        .c0_init_calib_complete  (                    ), // keep op  en
+        .sys_rst                 ( cpu_resetn         ),
+        .dbg_clk                 (                    )
+    );
+`else
     xlnx_mig_7_ddr3 i_ddr (
         .sys_clk_p,
         .sys_clk_n,
@@ -375,6 +582,8 @@ module sy_ddr
         .device_temp         (            ), // keep open
         .sys_rst             ( cpu_resetn )
     );
+`endif // ZCU106
+
 `elsif PLATFORM_SIM
     axi_mem_sim # (
       .ADDR_WTH  (64),

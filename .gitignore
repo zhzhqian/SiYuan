@@ -1,3 +1,14 @@
 ##ignore this file##
 dv/simulation/works
 fpga/build/*
+# vivado log
+*.jou
+*.log
+vivado.log
+fpga/*/*/*.cache/
+fpga/*/*/*.gen/
+fpga/*/*/*.hw/
+fpga/*/*/*.runs/
+fpga/*/*/*.srcs/
+fpga/*/*/*.xpr
+

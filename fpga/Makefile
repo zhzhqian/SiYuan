@@ -13,10 +13,16 @@ ips := xlnx_axi_clock_converter.xci  	\
        xlnx_axi_quad_spi.xci         	\
        xlnx_axi_gpio.xci             	\
        xlnx_clk_gen.xci              	\
-       xlnx_mig_7_ddr3.xci				\
 	   div64x64_d20_s.xci				\
 	   div64x64_d20_us.xci				\
 	   sdp_512x64sd1.xci						
+
+ifeq ($(BOARD), zcu106)
+ips += xlnx_mig_ddr4_sdram.xci \
+       xlnx_axi_ddr_dwidth_converter.xci
+else
+ips += xlnx_mig_7_ddr3.xci
+endif
 
 ips := $(addprefix $(build-dir)/, $(ips))
 ips-target := $(join $(addsuffix /ip/, $(addprefix $(ip-dir)/, $(basename $(ips)))), $(ips))
