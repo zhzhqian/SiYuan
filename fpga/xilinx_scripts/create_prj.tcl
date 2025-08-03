@@ -22,7 +22,8 @@ if {$::env(BOARD) eq "genesys2"} {
     read_ip ../xilinx_ip/xlnx_mig_7_ddr3/ip/xlnx_mig_7_ddr3.xci
 } elseif {$::env(BOARD) eq "zcu106"} {
     add_files -fileset constrs_1 -norecurse ../xilinx_constraint/zcu106.xdc
-    read_ip ../xilinx_ip/xlnx_mig_ddr3_sdram/ip/xlnx_mig_ddr3_sdram.xci
+    read_ip ../xilinx_ip/xlnx_axi_ddr_dwidth_converter/ip/xlnx_axi_ddr_dwidth_converter.xci
+    read_ip ../xilinx_ip/xlnx_mig_ddr4_sdram/ip/xlnx_mig_ddr4_sdram.xci
 } else {
     exit 1
 }

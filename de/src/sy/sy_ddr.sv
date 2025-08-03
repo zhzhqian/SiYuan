@@ -74,7 +74,6 @@ module sy_ddr
     inout  logic [7:0]                      c0_ddr4_dqs_c,
     inout  logic [7:0]                      c0_ddr4_dqs_t,
     output logic                            ddr_sync_reset,
-    output                                  c0_ddr4_ui_clk,
   `elsif GENESYS2
     input  logic                            sys_clk_p   ,
     input  logic                            sys_clk_n   ,
